@@ -1,9 +1,17 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback
+} from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://full-stack-project-smgk.onrender.com/api';
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  'https://full-stack-project-smgk.onrender.com/api';
 
 const AuthContext = createContext({});
 
@@ -15,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Configure axios defaults
+  // ✅ Configure axios defaults
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -26,7 +34,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Load user on mount
+  // ✅ Memoized logout (IMPORTANT)
+  const logout = useCallback(async () => {
+    try {
+      await axios.post(`${API_URL}/auth/logout`);
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setToken(null);
+      toast.success('Logged out successfully');
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // ✅ Load user on mount / token change
   useEffect(() => {
     const loadUser = async () => {
       if (token) {
@@ -35,29 +57,30 @@ export const AuthProvider = ({ children }) => {
           setUser(response.data.data);
         } catch (error) {
           console.error('Failed to load user:', error);
-          logout();
+          logout(); // now SAFE
         }
       }
       setLoading(false);
     };
 
     loadUser();
-  }, [token]);
+  }, [token, logout]); // ✅ logout added
 
   const register = async (userData) => {
     try {
       setLoading(true);
       const response = await axios.post(`${API_URL}/auth/register`, userData);
-      
+
       const { user, token } = response.data.data;
       setUser(user);
       setToken(token);
-      
+
       toast.success('Registration successful!');
       navigate('/dashboard');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message =
+        error.response?.data?.message || 'Registration failed';
       toast.error(message);
       return { success: false, error: message };
     } finally {
@@ -69,11 +92,11 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await axios.post(`${API_URL}/auth/login`, credentials);
-      
+
       const { user, token } = response.data.data;
       setUser(user);
       setToken(token);
-      
+
       toast.success('Login successful!');
       navigate('/dashboard');
       return { success: true };
@@ -86,22 +109,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
-    try {
-      await axios.post(`${API_URL}/auth/logout`);
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      setToken(null);
-      toast.success('Logged out successfully');
-      navigate('/login');
-    }
-  };
-
   const updateProfile = async (profileData) => {
     try {
-      const response = await axios.put(`${API_URL}/users/profile`, profileData);
+      const response = await axios.put(
+        `${API_URL}/users/profile`,
+        profileData
+      );
       setUser(response.data.data);
       toast.success('Profile updated successfully');
       return { success: true, user: response.data.data };

@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 ====================== */
 const allowedOrigins = [
   'http://localhost:3000',      // React dev
-  'https://yourdomain.com'      // Production
+  'https://famous-tulumba-e00f70.netlify.app'      // Production
 ];
 
 app.use(cors({
