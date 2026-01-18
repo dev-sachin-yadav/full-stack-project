@@ -13,49 +13,57 @@ const userRoutes = require('./routes/users');
 const app = express();
 
 /* ======================
-   Middleware
+   Security & Logging
 ====================== */
 app.use(helmet());
 app.use(morgan('dev'));
+
+/* ======================
+   Body Parsers
+====================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ======================
-   CORS Setup
+   CORS Setup (FIXED)
 ====================== */
 const allowedOrigins = [
-  'http://localhost:3000',      // React dev
-  'https://famous-tulumba-e00f70.netlify.app'      // Production
+  'http://localhost:3000',
+  'https://task-manegment-app.netlify.app'
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like Postman or server-to-server)
+  origin: (origin, callback) => {
+    // Allow server-to-server, Postman, Render health checks
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
     }
+
+    return callback(new Error('Not allowed by CORS'));
   },
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 /* ======================
    Database Connection
 ====================== */
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connected'))
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => {
-    console.error('MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
 
 /* ======================
-   Routes
+   API Routes
 ====================== */
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -86,11 +94,10 @@ app.get('/', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
 
-  // CORS error handler
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({
       success: false,
-      message: 'CORS Error: This origin is not allowed'
+      message: 'CORS Error: Origin not allowed'
     });
   }
 
@@ -112,7 +119,7 @@ app.use('*', (req, res) => {
 });
 
 /* ======================
-   Start Server
+   Start Server (Render)
 ====================== */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
